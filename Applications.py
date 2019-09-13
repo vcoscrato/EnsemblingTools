@@ -17,6 +17,13 @@ import matplotlib
 from matplotlib import pyplot as plt
 matplotlib.rcParams['text.usetex'] = True
 
+def set_seeds(seed=0):
+    from tensorflow import set_random_seed
+    from torch import manual_seed
+    set_random_seed(seed)
+    manual_seed(seed)
+    np.random.seed(seed)
+
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 warnings.filterwarnings(action='ignore', category=FutureWarning)
 
@@ -24,6 +31,7 @@ def empty(*args, **kwargs):
     return np.empty(*args, **kwargs) + np.nan
 
 def cvpredict(x, y, base_est, NN_layers):
+    set_seeds()
 
     # Top level cross-validation
     splitter = KFold(n_splits=4, shuffle=True, random_state=0)
