@@ -17,83 +17,118 @@ import matplotlib
 from matplotlib import pyplot as plt
 matplotlib.rcParams['text.usetex'] = True
 
+def set_seeds(seed=0):
+    from tensorflow import set_random_seed
+    from torch import manual_seed
+    set_random_seed(seed)
+    manual_seed(seed)
+    np.random.seed(seed)
+
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 warnings.filterwarnings(action='ignore', category=FutureWarning)
 
+def empty(*args, **kwargs):
+    return np.empty(*args, **kwargs) + np.nan
+
 def cvpredict(x, y, base_est, NN_layers):
+    set_seeds()
 
     # Top level cross-validation
     splitter = KFold(n_splits=4, shuffle=True, random_state=0)
-    cv_predictions = np.empty((len(x), len(base_est)+7))
-    thetas = np.empty((4, len(x), len(base_est)))
+    cv_predictions = empty((len(x), len(base_est)+7))
+    thetas = empty((4, len(x), len(base_est)))
     t = [0]*(len(base_est)+7)
     for index, (train, test) in enumerate(splitter.split(x)):
 
         print('Fold:', index)
-        # Fit base estimators
-        print('Base estimators...')
-        g = np.empty((len(train), len(base_est)))
-        for i, est in enumerate(base_est):
-            t0 = time()
-            g[:, i] = cross_val_predict(est, x[train], y[train], cv=2)
-            est.fit(x[train], y[train])
-            cv_predictions[test, i] = est.predict(x[test])
-            t[i] += time() - t0
 
         # Inner data splitting
-        x_train, x_val, y_train, y_val = train_test_split(x[train], y[train], test_size=0.1, random_state=0)
+        x_train, y_train = x[train], y[train]
+        x_strain, x_val, y_strain, y_val = train_test_split(x_train, y_train, test_size=0.1, random_state=0)
 
         # UNNS
         print('UNNS...')
         best_mse = np.infty
         t0 = time()
-        for layers in NN_layers:
-            print('Current layers:', layers)
-            nns = NNS(
-                verbose=0,
+        predictions_splits = []
+        kwargs = dict(
+		verbose=0,
                 nn_weight_decay=0.0,
                 es=True,
                 es_give_up_after_nepochs=50,
-                num_layers=layers,
+                num_layers=-1,
                 hidden_size=100,
                 estimators=base_est,
-                gpu=False,
                 ensemble_method="UNNS",
                 ensemble_addition=False,
                 es_splitter_random_state=0,
-            ).fit(x[train], y[train].reshape(len(y[train]), 1), g.reshape(len(train), 1, len(base_est)))
+                nworkers=1
+		)
+        for layers in NN_layers:
+            print('Current layers:', layers)
+            kwargs['num_layers'] = layers
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), None)
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = nns
+                best_model = layers
+
+	    # append predictions for reuse
+            predictions_splits.append(nns.predictions)
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(-1, 1), None)
+        best_model = nns
+        best_mse = mean_squared_error(nns.predict(x_val), y_val)
+        predictions_full = nns.predictions
 
         t[len(base_est)] += time() - t0
         cv_predictions[test, len(base_est)] = best_model.predict(x[test]).flatten()
         thetas[0, test, :] = best_model.get_weights(x[test])[0]
 
+        # Fit base estimators
+        print('Base estimators...')
+        for i, est in enumerate(base_est):
+            t0 = time()
+	    # estimators were fitted already by the above function
+            # est.fit(x[train], y[train])
+            cv_predictions[test, i] = est.predict(x[test]).flatten()
+            t[i] += time() - t0
+
         # UNNS + phi
         print('UNNS + phi...')
         best_mse = np.infty
         t0 = time()
-        for layers in NN_layers:
-            print('Current layers:', layers)
-            nns = NNS(
-                verbose=0,
+        predictions_splits = []
+        kwargs = dict(
+		verbose=0,
                 nn_weight_decay=0.0,
                 es=True,
                 es_give_up_after_nepochs=50,
-                num_layers=layers,
+                num_layers=-1,
                 hidden_size=100,
                 estimators=base_est,
-                gpu=False,
                 ensemble_method="UNNS",
                 ensemble_addition=True,
                 es_splitter_random_state=0,
-            ).fit(x[train], y[train].reshape(len(y[train]), 1), g.reshape(len(train), 1, len(base_est)))
+		)
+        for lidx, layers in enumerate(NN_layers):
+            print('Current layers:', layers)
+            kwargs['num_layers'] = layers
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), predictions_splits[lidx])
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = nns
+                best_model = layers
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(-1, 1), predictions_full)
+        best_model = nns
+        best_mse = mean_squared_error(nns.predict(x_val), y_val)
 
         t[len(base_est)+1] += time() - t0
         cv_predictions[test, len(base_est)+1] = best_model.predict(x[test]).flatten()
@@ -103,25 +138,34 @@ def cvpredict(x, y, base_est, NN_layers):
         print('CNNS...')
         best_mse = np.infty
         t0 = time()
-        for layers in NN_layers:
-            print('Current layers:', layers)
-            nns = NNS(
-                verbose=0,
+        predictions_splits = []
+        kwargs = dict(
+		verbose=0,
                 nn_weight_decay=0.0,
                 es=True,
                 es_give_up_after_nepochs=50,
-                num_layers=layers,
+                num_layers=-1,
                 hidden_size=100,
                 estimators=base_est,
-                gpu=False,
                 ensemble_method="CNNS",
                 ensemble_addition=False,
                 es_splitter_random_state=0,
-            ).fit(x[train], y[train].reshape(len(y[train]), 1), g.reshape(len(train), 1, len(base_est)))
+		)
+        for lidx, layers in enumerate(NN_layers):
+            print('Current layers:', layers)
+            kwargs['num_layers'] = layers
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), predictions_splits[lidx])
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = nns
+                best_model = layers
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(-1, 1), predictions_full)
+        best_model = nns
+        best_mse = mean_squared_error(nns.predict(x_val), y_val)
 
         t[len(base_est)+2] += time() - t0
         cv_predictions[test, len(base_est)+2] = best_model.predict(x[test]).flatten()
@@ -131,25 +175,34 @@ def cvpredict(x, y, base_est, NN_layers):
         print('CNNS + phi...')
         best_mse = np.infty
         t0 = time()
-        for layers in NN_layers:
-            print('Current layers:', layers)
-            nns = NNS(
-                verbose=0,
+        predictions_splits = []
+        kwargs = dict(
+		verbose=0,
                 nn_weight_decay=0.0,
                 es=True,
                 es_give_up_after_nepochs=50,
-                num_layers=layers,
+                num_layers=-1,
                 hidden_size=100,
                 estimators=base_est,
-                gpu=False,
                 ensemble_method="CNNS",
                 ensemble_addition=True,
                 es_splitter_random_state=0,
-            ).fit(x[train], y[train].reshape(len(y[train]), 1), g.reshape(len(train), 1, len(base_est)))
+		)
+        for lidx, layers in enumerate(NN_layers):
+            print('Current layers:', layers)
+            kwargs['num_layers'] = layers
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), predictions_splits[lidx])
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = nns
+                best_model = layers
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(-1, 1), predictions_full)
+        best_model = nns
+        best_mse = mean_squared_error(nns.predict(x_val), y_val)
 
         t[len(base_est)+3] += time() - t0
         cv_predictions[test, len(base_est)+3] = best_model.predict(x[test]).flatten()
@@ -159,19 +212,28 @@ def cvpredict(x, y, base_est, NN_layers):
         print('Direct NN...')
         best_mse = np.infty
         t0 = time()
+        predictions_splits = []
+        kwargs = dict(
+            verbose=0,
+            es_give_up_after_nepochs=50,
+            hidden_size=100,
+            num_layers=-1,
+		)
         for layers in NN_layers:
             print('Current layers:', layers)
-            model = NNPredict(
-			    verbose=0,
-			    es_give_up_after_nepochs=50,
-			    hidden_size=100,
-			    num_layers=layers,
-			    gpu=False,
-			).fit(x_train, y_train)
-            error = mean_squared_error(model.predict(x_val), y_val)
+            kwargs['num_layers'] = layers
+            nnpredict = NNPredict(**kwargs).fit(x_strain, y_strain.reshape(-1, 1))
+            error = mean_squared_error(nnpredict.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = model
+                best_model = layers
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nnpredict = NNPredict(**kwargs).fit(x_train, y_train)
+        best_model = nnpredict
+        best_mse = mean_squared_error(nnpredict.predict(x_val), y_val)
 
         t[len(base_est)+6] += time() - t0
         cv_predictions[test, len(base_est)+6] = best_model.predict(x[test]).flatten()
@@ -208,7 +270,7 @@ def cvpredict(x, y, base_est, NN_layers):
                 best_mse = error
                 best_model = model
 
-        g_test = np.empty((len(test), len(base_est)))
+        g_test = empty((len(test), len(base_est)))
         for i, est in enumerate(base_est):
             g_test[:, i] = est.predict(x[test])
 
@@ -219,7 +281,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
 def metrics(cv_predictions, y, t):
 
-    output = np.empty((cv_predictions.shape[1], 5))
+    output = empty((cv_predictions.shape[1], 5))
     for model in range(cv_predictions.shape[1]):
         preds = cv_predictions[:, model]
         index = np.isnan(preds)
@@ -252,7 +314,7 @@ def weights_plot(thetas, file_name, results):
 if __name__ == '__main__':
 
     # Superconductivity
-    data = pd.read_csv('/home/vcoscrato/Datasets/superconductivity.csv')
+    data = pd.read_csv('datasets/superconductivity.csv')
     x = data.iloc[:, range(0, data.shape[1] - 1)].values
     y = data.iloc[:, -1].values
 
@@ -283,7 +345,7 @@ if __name__ == '__main__':
     weights_plot(cvpreds[1], 'img/superconductivity.pdf', results)
 
     # Blog
-    data = pd.read_csv('/home/vcoscrato/Datasets/blog feedback.csv')
+    data = pd.read_csv('datasets/blog feedback.csv')
     x = data.iloc[:, range(0, data.shape[1] - 1)].values
     y = data.iloc[:, -1].values
     """
@@ -307,7 +369,7 @@ if __name__ == '__main__':
     weights_plot(cvpreds[1], 'img/blog feedback.pdf', results)
 
     # GPU
-    data = pd.read_csv('/home/vcoscrato/Datasets/GPU kernel performance.csv')
+    data = pd.read_csv('datasets/GPU kernel performance.csv')
     x = data.iloc[:, :13].values
     y = data.iloc[:, 14:].apply(np.mean, axis=1).values
 
@@ -328,7 +390,7 @@ if __name__ == '__main__':
     weights_plot(cvpreds[1], 'img/GPU.pdf', results)
 
     # Year
-    data = pd.read_table('/home/vcoscrato/Datasets/music year.txt', sep=',')
+    data = pd.read_table('datasets/music year.txt', sep=',')
     x = data.iloc[:, range(1, data.shape[1])].values
     y = data.iloc[:, 0].values
 
@@ -347,5 +409,3 @@ if __name__ == '__main__':
     results = metrics(cvpreds[0], y, cvpreds[2])
     results.to_csv('results/year.csv', index_label = 'Model')
     weights_plot(cvpreds[1], 'img/year.pdf', results)
-
-
