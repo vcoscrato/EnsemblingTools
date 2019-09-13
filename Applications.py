@@ -63,14 +63,14 @@ def cvpredict(x, y, base_est, NN_layers):
             if error < best_mse:
                 best_mse = error
                 best_model = layers
-            
+
 	    # append predictions for reuse
             predictions_splits.append(nns.predictions)
-	
+
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nns = NNS(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), None)
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(len(y[train]), 1), None)
         best_model = nns
         best_mse = mean_squared_error(nns.predict(x_val), y_val)
         predictions_full = nns.predictions
@@ -117,10 +117,10 @@ def cvpredict(x, y, base_est, NN_layers):
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nns = NNS(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), predictions_full)
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(len(y[train]), 1), predictions_full)
         best_model = nns
         best_mse = mean_squared_error(nns.predict(x_val), y_val)
-        
+
         t[len(base_est)+1] += time() - t0
         cv_predictions[test, len(base_est)+1] = best_model.predict(x[test]).flatten()
         thetas[1, test, :] = best_model.get_weights(x[test])[0]
@@ -154,7 +154,7 @@ def cvpredict(x, y, base_est, NN_layers):
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nns = NNS(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), predictions_full)
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(len(y[train]), 1), predictions_full)
         best_model = nns
         best_mse = mean_squared_error(nns.predict(x_val), y_val)
 
@@ -191,7 +191,7 @@ def cvpredict(x, y, base_est, NN_layers):
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nns = NNS(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), predictions_full)
+        nns = NNS(**kwargs).fit(x_train, y_train.reshape(len(y[train]), 1), predictions_full)
         best_model = nns
         best_mse = mean_squared_error(nns.predict(x_val), y_val)
 
@@ -222,7 +222,7 @@ def cvpredict(x, y, base_est, NN_layers):
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nnpredict = NNPredict(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1))
+        nnpredict = NNPredict(**kwargs).fit(x_train, y_train.reshape(len(y[train]), 1))
         best_model = nnpredict
         best_mse = mean_squared_error(nnpredict.predict(x_val), y_val)
 
