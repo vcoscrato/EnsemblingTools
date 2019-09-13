@@ -210,10 +210,10 @@ def cvpredict(x, y, base_est, NN_layers):
             hidden_size=100,
             num_layers=layers,
 		)
-        for lidx, layers in enumerate(NN_layers):
+        for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
-            nnpredict = NNPredict(**kwargs).fit(x_strain, y_strain.reshape(len(y[train]), 1), predictions_splits[lidx])
+            nnpredict = NNPredict(**kwargs).fit(x_strain, y_strain.reshape(len(y[train]), 1))
             error = mean_squared_error(nnpredict.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
@@ -222,7 +222,7 @@ def cvpredict(x, y, base_est, NN_layers):
         kwargs['num_layers'] = best_model
         print("Best number of layers:", best_model)
         print("Fitting model with full data")
-        nnpredict = NNPredict(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), predictions_full)
+        nnpredict = NNPredict(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1))
         best_model = nnpredict
         best_mse = mean_squared_error(nnpredict.predict(x_val), y_val)
 
