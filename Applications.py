@@ -94,7 +94,7 @@ def cvpredict(x, y, base_est, NN_layers):
             t0 = time()
 	    # estimators were fitted already by the above function
             # est.fit(x[train], y[train])
-            cv_predictions[test, i] = est.predict(x[test])
+            cv_predictions[test, i] = est.predict(x[test]).flatten()
             t[i] += time() - t0
 
         # UNNS + phi
