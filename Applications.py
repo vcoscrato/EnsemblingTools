@@ -20,19 +20,22 @@ matplotlib.rcParams['text.usetex'] = True
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 warnings.filterwarnings(action='ignore', category=FutureWarning)
 
+def empty(*args, **kwargs):
+    return np.empty(*args, **kwargs) + np.nan
+
 def cvpredict(x, y, base_est, NN_layers):
 
     # Top level cross-validation
     splitter = KFold(n_splits=4, shuffle=True, random_state=0)
-    cv_predictions = np.empty((len(x), len(base_est)+7))
-    thetas = np.empty((4, len(x), len(base_est)))
+    cv_predictions = empty((len(x), len(base_est)+7))
+    thetas = empty((4, len(x), len(base_est)))
     t = [0]*(len(base_est)+7)
     for index, (train, test) in enumerate(splitter.split(x)):
 
         print('Fold:', index)
         # Fit base estimators
         print('Base estimators...')
-        g = np.empty((len(train), len(base_est)))
+        g = empty((len(train), len(base_est)))
         for i, est in enumerate(base_est):
             t0 = time()
             g[:, i] = cross_val_predict(est, x[train], y[train], cv=2)
@@ -208,7 +211,7 @@ def cvpredict(x, y, base_est, NN_layers):
                 best_mse = error
                 best_model = model
 
-        g_test = np.empty((len(test), len(base_est)))
+        g_test = empty((len(test), len(base_est)))
         for i, est in enumerate(base_est):
             g_test[:, i] = est.predict(x[test])
 
@@ -219,7 +222,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
 def metrics(cv_predictions, y, t):
 
-    output = np.empty((cv_predictions.shape[1], 5))
+    output = empty((cv_predictions.shape[1], 5))
     for model in range(cv_predictions.shape[1]):
         preds = cv_predictions[:, model]
         index = np.isnan(preds)
