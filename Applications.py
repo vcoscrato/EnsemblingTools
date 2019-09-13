@@ -69,7 +69,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)] += time() - t0
         cv_predictions[test, len(base_est)] = best_model.predict(x[test]).flatten()
-        thetas[0, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[0, test, :] = best_model.get_weights(x[test])[0]
 
         # UNNS + phi
         print('UNNS + phi...')
@@ -97,7 +97,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+1] += time() - t0
         cv_predictions[test, len(base_est)+1] = best_model.predict(x[test]).flatten()
-        thetas[1, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[1, test, :] = best_model.get_weights(x[test])[0]
 
         # CNNS
         print('CNNS...')
@@ -125,7 +125,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+2] += time() - t0
         cv_predictions[test, len(base_est)+2] = best_model.predict(x[test]).flatten()
-        thetas[2, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[2, test, :] = best_model.get_weights(x[test])[0]
 
         # CNNS + phi
         print('CNNS + phi...')
@@ -153,7 +153,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+3] += time() - t0
         cv_predictions[test, len(base_est)+3] = best_model.predict(x[test]).flatten()
-        thetas[3, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[3, test, :] = best_model.get_weights(x[test])[0]
 
         # Direct NN
         print('Direct NN...')
@@ -255,21 +255,28 @@ if __name__ == '__main__':
     data = pd.read_csv('/home/vcoscrato/Datasets/superconductivity.csv')
     x = data.iloc[:, range(0, data.shape[1] - 1)].values
     y = data.iloc[:, -1].values
-    """
-    cvpreds = cvpredict(x, y, NN_layers=[1, 3, 10],
-          base_est=[
-              LinearRegression(),
-              LassoCV(),
-              RidgeCV(),
-              GridSearchCV(BaggingRegressor(n_jobs=-1), {'n_estimators': (5, 10, 20, 50)}),
-              RandomForestRegressor(n_jobs=-1),
-              GridSearchCV(GradientBoostingRegressor(), {'learning_rate': (0.01, 0.1, 0.2), 'n_estimators': (50, 100, 200)}, n_jobs=-1)
-          ])
-    with open('fitted/superconductivity.pkl', 'wb') as f:
-        pickle.dump(cvpreds, f, pickle.HIGHEST_PROTOCOL)
-    """
-    with open('fitted/superconductivity.pkl', 'rb') as f:
-        cvpreds = pickle.load(f)
+
+    frname = 'fitted/superconductivity.pkl'
+    try:
+        with open(frname, 'rb') as f:
+            cvpreds = pickle.load(f)
+    except (IOError, EOFError):
+        cvpreds = cvpredict(x, y, NN_layers=[1, 3, 10],
+              base_est=[
+                  LinearRegression(),
+                  LassoCV(),
+                  RidgeCV(),
+                  GridSearchCV(BaggingRegressor(n_jobs=-1), {
+                      'n_estimators': (5, 10, 20, 50)
+                  }),
+                  RandomForestRegressor(n_jobs=-1),
+                  GridSearchCV(GradientBoostingRegressor(), {
+                      'learning_rate': (0.01, 0.1, 0.2),
+                      'n_estimators': (50, 100, 200)
+                  }, n_jobs=-1)
+              ])
+        with open(frname, 'wb') as f:
+            pickle.dump(cvpreds, f, pickle.HIGHEST_PROTOCOL)
 
     results = metrics(cvpreds[0], y, cvpreds[2])
     results.to_csv('results/superconductivity.csv', index_label = 'Model')
