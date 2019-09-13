@@ -255,21 +255,28 @@ if __name__ == '__main__':
     data = pd.read_csv('/home/vcoscrato/Datasets/superconductivity.csv')
     x = data.iloc[:, range(0, data.shape[1] - 1)].values
     y = data.iloc[:, -1].values
-    """
-    cvpreds = cvpredict(x, y, NN_layers=[1, 3, 10],
-          base_est=[
-              LinearRegression(),
-              LassoCV(),
-              RidgeCV(),
-              GridSearchCV(BaggingRegressor(n_jobs=-1), {'n_estimators': (5, 10, 20, 50)}),
-              RandomForestRegressor(n_jobs=-1),
-              GridSearchCV(GradientBoostingRegressor(), {'learning_rate': (0.01, 0.1, 0.2), 'n_estimators': (50, 100, 200)}, n_jobs=-1)
-          ])
-    with open('fitted/superconductivity.pkl', 'wb') as f:
-        pickle.dump(cvpreds, f, pickle.HIGHEST_PROTOCOL)
-    """
-    with open('fitted/superconductivity.pkl', 'rb') as f:
-        cvpreds = pickle.load(f)
+
+    frname = 'fitted/superconductivity.pkl'
+    try:
+        with open(frname, 'rb') as f:
+            cvpreds = pickle.load(f)
+    except (IOError, EOFError):
+        cvpreds = cvpredict(x, y, NN_layers=[1, 3, 10],
+              base_est=[
+                  LinearRegression(),
+                  LassoCV(),
+                  RidgeCV(),
+                  GridSearchCV(BaggingRegressor(n_jobs=-1), {
+                      'n_estimators': (5, 10, 20, 50)
+                  }),
+                  RandomForestRegressor(n_jobs=-1),
+                  GridSearchCV(GradientBoostingRegressor(), {
+                      'learning_rate': (0.01, 0.1, 0.2),
+                      'n_estimators': (50, 100, 200)
+                  }, n_jobs=-1)
+              ])
+        with open(frname, 'wb') as f:
+            pickle.dump(cvpreds, f, pickle.HIGHEST_PROTOCOL)
 
     results = metrics(cvpreds[0], y, cvpreds[2])
     results.to_csv('results/superconductivity.csv', index_label = 'Model')
