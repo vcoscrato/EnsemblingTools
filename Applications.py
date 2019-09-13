@@ -62,7 +62,7 @@ def cvpredict(x, y, base_est, NN_layers):
             ensemble_method="UNNS",
             ensemble_addition=False,
             es_splitter_random_state=0,
-            nworkers=1
+            nworkers=1,
     		)
         for layers in NN_layers:
             print('Current layers:', layers)
@@ -95,7 +95,7 @@ def cvpredict(x, y, base_est, NN_layers):
 	          # estimators were fitted already by the above function
             # est.fit(x[train], y[train])
             cv_predictions[test, i] = est.predict(x[test]).flatten()
-            t[i] += time() - t0
+            t[i] += time() - t0 + nns.estimators_time[i]
 
         # UNNS + phi
         print('UNNS + phi...')
