@@ -30,7 +30,6 @@ def set_seeds(seed=0):
 def empty(*args, **kwargs):
     return np.empty(*args, **kwargs) + np.nan
 
-
 def cvpredict(x, y, base_est, NN_layers, patience):
 
     set_seeds()
@@ -253,7 +252,7 @@ def weights_plot(thetas, file_name, results):
 
     return 'Success!'
 
-def run(x, y, frname):
+def run(x, y, frname, patience=10):
 
     try:
         with open('fitted/'+frname+'.pkl', 'rb') as f:
@@ -272,7 +271,7 @@ def run(x, y, frname):
                       'learning_rate': (0.01, 0.1, 0.2),
                       'n_estimators': (50, 100, 200)
                   }, n_jobs=-1)
-              ], patience=10)
+              ], patience)
         with open('fitted/'+frname+'.pkl', 'wb') as f:
             pickle.dump(cvpreds, f, pickle.HIGHEST_PROTOCOL)
 
