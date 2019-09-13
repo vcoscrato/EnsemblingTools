@@ -69,7 +69,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)] += time() - t0
         cv_predictions[test, len(base_est)] = best_model.predict(x[test]).flatten()
-        thetas[0, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[0, test, :] = best_model.get_weights(x[test])[0]
 
         # UNNS + phi
         print('UNNS + phi...')
@@ -97,7 +97,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+1] += time() - t0
         cv_predictions[test, len(base_est)+1] = best_model.predict(x[test]).flatten()
-        thetas[1, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[1, test, :] = best_model.get_weights(x[test])[0]
 
         # CNNS
         print('CNNS...')
@@ -125,7 +125,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+2] += time() - t0
         cv_predictions[test, len(base_est)+2] = best_model.predict(x[test]).flatten()
-        thetas[2, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[2, test, :] = best_model.get_weights(x[test])[0]
 
         # CNNS + phi
         print('CNNS + phi...')
@@ -153,7 +153,7 @@ def cvpredict(x, y, base_est, NN_layers):
 
         t[len(base_est)+3] += time() - t0
         cv_predictions[test, len(base_est)+3] = best_model.predict(x[test]).flatten()
-        thetas[3, test, :] = best_model.get_weights(x[test])[0].numpy()
+        thetas[3, test, :] = best_model.get_weights(x[test])[0]
 
         # Direct NN
         print('Direct NN...')
