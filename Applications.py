@@ -203,18 +203,28 @@ def cvpredict(x, y, base_est, NN_layers):
         print('Direct NN...')
         best_mse = np.infty
         t0 = time()
-        for layers in NN_layers:
+        predictions_splits = []
+        kwargs = dict(
+            verbose=0,
+            es_give_up_after_nepochs=50,
+            hidden_size=100,
+            num_layers=layers,
+		)
+        for lidx, layers in enumerate(NN_layers):
             print('Current layers:', layers)
-            model = NNPredict(
-			    verbose=0,
-			    es_give_up_after_nepochs=50,
-			    hidden_size=100,
-			    num_layers=layers,
-			).fit(x_train, y_train)
-            error = mean_squared_error(model.predict(x_val), y_val)
+            kwargs['num_layers'] = layers
+            nnpredict = NNPredict(**kwargs).fit(x_strain, y_strain.reshape(len(y[train]), 1), predictions_splits[lidx])
+            error = mean_squared_error(nnpredict.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
-                best_model = model
+                best_model = layers
+
+        kwargs['num_layers'] = best_model
+        print("Best number of layers:", best_model)
+        print("Fitting model with full data")
+        nnpredict = NNPredict(**kwargs).fit(x_train], y_train].reshape(len(y[train]), 1), predictions_full)
+        best_model = nnpredict
+        best_mse = mean_squared_error(nnpredict.predict(x_val), y_val)
 
         t[len(base_est)+6] += time() - t0
         cv_predictions[test, len(base_est)+6] = best_model.predict(x[test]).flatten()
