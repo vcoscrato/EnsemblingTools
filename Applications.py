@@ -52,18 +52,18 @@ def cvpredict(x, y, base_est, NN_layers):
         t0 = time()
         predictions_splits = []
         kwargs = dict(
-		verbose=0,
-                nn_weight_decay=0.0,
-                es=True,
-                es_give_up_after_nepochs=50,
-                num_layers=-1,
-                hidden_size=100,
-                estimators=base_est,
-                ensemble_method="UNNS",
-                ensemble_addition=False,
-                es_splitter_random_state=0,
-                nworkers=1
-		)
+		        verbose=0,
+            nn_weight_decay=0.0,
+            es=True,
+            es_give_up_after_nepochs=50,
+            num_layers=-1,
+            hidden_size=100,
+            estimators=base_est,
+            ensemble_method="UNNS",
+            ensemble_addition=False,
+            es_splitter_random_state=0,
+            nworkers=1
+    		)
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
@@ -73,7 +73,7 @@ def cvpredict(x, y, base_est, NN_layers):
                 best_mse = error
                 best_model = layers
 
-	    # append predictions for reuse
+	      # append predictions for reuse
             predictions_splits.append(nns.predictions)
 
         kwargs['num_layers'] = best_model
@@ -92,7 +92,7 @@ def cvpredict(x, y, base_est, NN_layers):
         print('Base estimators...')
         for i, est in enumerate(base_est):
             t0 = time()
-	    # estimators were fitted already by the above function
+	          # estimators were fitted already by the above function
             # est.fit(x[train], y[train])
             cv_predictions[test, i] = est.predict(x[test]).flatten()
             t[i] += time() - t0
@@ -101,19 +101,18 @@ def cvpredict(x, y, base_est, NN_layers):
         print('UNNS + phi...')
         best_mse = np.infty
         t0 = time()
-        predictions_splits = []
         kwargs = dict(
-		verbose=0,
-                nn_weight_decay=0.0,
-                es=True,
-                es_give_up_after_nepochs=50,
-                num_layers=-1,
-                hidden_size=100,
-                estimators=base_est,
-                ensemble_method="UNNS",
-                ensemble_addition=True,
-                es_splitter_random_state=0,
-		)
+            verbose=0,
+            nn_weight_decay=0.0,
+            es=True,
+            es_give_up_after_nepochs=50,
+            num_layers=-1,
+            hidden_size=100,
+            estimators=base_est,
+            ensemble_method="UNNS",
+            ensemble_addition=True,
+            es_splitter_random_state=0,
+	    	)
         for lidx, layers in enumerate(NN_layers):
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
@@ -138,19 +137,18 @@ def cvpredict(x, y, base_est, NN_layers):
         print('CNNS...')
         best_mse = np.infty
         t0 = time()
-        predictions_splits = []
         kwargs = dict(
-		verbose=0,
-                nn_weight_decay=0.0,
-                es=True,
-                es_give_up_after_nepochs=50,
-                num_layers=-1,
-                hidden_size=100,
-                estimators=base_est,
-                ensemble_method="CNNS",
-                ensemble_addition=False,
-                es_splitter_random_state=0,
-		)
+	         	verbose=0,
+            nn_weight_decay=0.0,
+            es=True,
+            es_give_up_after_nepochs=50,
+            num_layers=-1,
+            hidden_size=100,
+            estimators=base_est,
+            ensemble_method="CNNS",
+            ensemble_addition=False,
+            es_splitter_random_state=0,
+    		)
         for lidx, layers in enumerate(NN_layers):
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
@@ -175,19 +173,18 @@ def cvpredict(x, y, base_est, NN_layers):
         print('CNNS + phi...')
         best_mse = np.infty
         t0 = time()
-        predictions_splits = []
         kwargs = dict(
-		verbose=0,
-                nn_weight_decay=0.0,
-                es=True,
-                es_give_up_after_nepochs=50,
-                num_layers=-1,
-                hidden_size=100,
-                estimators=base_est,
-                ensemble_method="CNNS",
-                ensemble_addition=True,
-                es_splitter_random_state=0,
-		)
+	        	verbose=0,
+            nn_weight_decay=0.0,
+            es=True,
+            es_give_up_after_nepochs=50,
+            num_layers=-1,
+            hidden_size=100,
+            estimators=base_est,
+            ensemble_method="CNNS",
+            ensemble_addition=True,
+            es_splitter_random_state=0,
+	    	)
         for lidx, layers in enumerate(NN_layers):
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
@@ -212,13 +209,12 @@ def cvpredict(x, y, base_est, NN_layers):
         print('Direct NN...')
         best_mse = np.infty
         t0 = time()
-        predictions_splits = []
         kwargs = dict(
             verbose=0,
             es_give_up_after_nepochs=50,
             hidden_size=100,
             num_layers=-1,
-		)
+	    	)
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
