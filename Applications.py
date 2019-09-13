@@ -62,6 +62,7 @@ def cvpredict(x, y, base_est, NN_layers):
                 ensemble_method="UNNS",
                 ensemble_addition=False,
                 es_splitter_random_state=0,
+                nworkers=1
 		)
         for layers in NN_layers:
             print('Current layers:', layers)
