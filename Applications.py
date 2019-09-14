@@ -3,6 +3,7 @@ import os
 import warnings
 import pandas as pd
 import pickle
+from copy import deepcopy
 from time import time
 from nnstacking import NNS, LinearStack, NNPredict
 from keras.models import Sequential
@@ -35,6 +36,8 @@ def cvpredict(x, y, base_est, NN_layers, patience):
 
     set_seeds()
 
+    strain_base_est = deepcopy(base_est)
+
     # Top level cross-validation
     splitter = KFold(n_splits=4, shuffle=True, random_state=0)
     cv_predictions = empty((len(x), len(base_est)+7))
@@ -49,10 +52,16 @@ def cvpredict(x, y, base_est, NN_layers, patience):
 
         # Fit base estimators
         print('Base estimators...')
-        g_val = empty((len(x_strain), len(base_est)))
-        for i, est in enumerate(base_est):
-            g_val[:, i] = cross_val_predict(est, x_strain, y_strain, cv=10)
-            est.fit(x_strain, y_strain)
+        g_strain = empty((len(x_strain), len(base_est)))
+        g = empty((len(train), len(base_est)))
+        for i in range(len(base_est)):
+            t0 = time()
+            g_strain[:, i] = cross_val_predict(strain_base_est[i], x_strain, y_strain, cv=10)
+            g[:, i] = cross_val_predict(base_est[i], x[train], y[train], cv=10)
+            strain_base_est[i].fit(x_strain, y_strain)
+            base_est[i].fit(x[train], y[train])
+            cv_predictions[test, i] = base_est[i].predict(x[test])
+            t[i] += time() - t0
 
         kwargs = dict(verbose=0,
                 nn_weight_decay=0.0,
@@ -60,11 +69,13 @@ def cvpredict(x, y, base_est, NN_layers, patience):
                 es_give_up_after_nepochs=patience,
                 num_layers=-1,
                 hidden_size=100,
-                estimators=base_est,
+                estimators=strain_base_est,
                 ensemble_method="UNNS",
                 ensemble_addition=False,
                 es_splitter_random_state=0,
                 nworkers=1)
+        kwargs2 = deepcopy(kwargs)
+        kwargs2['estimators'] = base_est
 
         # UNNS
         print('UNNS...')
@@ -73,25 +84,15 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
-            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_val, axis=1))
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_strain, axis=1))
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
                 best_model = layers
 
-        t[len(base_est)] += time() - t0
-        kwargs['num_layers'] = best_model
-        print('Base estimators...')
-        g = empty((len(train), len(base_est)))
-        for i, est in enumerate(base_est):
-            t0 = time()
-            g[:, i] = cross_val_predict(est, x[train], y[train], cv=10)
-            est.fit(x[train], y[train])
-            cv_predictions[test, i] = est.predict(x[test])
-            t[i] += time() - t0
+        kwargs2['num_layers'] = best_model
         print("Best number of layers:", best_model, "Fitting model with full data")
-        t0 = time()
-        nns = NNS(**kwargs).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
+        nns = NNS(**kwargs2).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
 
         t[len(base_est)] += time() - t0
         cv_predictions[test, len(base_est)] = nns.predict(x[test]).flatten()
@@ -105,19 +106,19 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
-            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_val, axis=1))
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_strain, axis=1))
             error = mean_squared_error(nns.predict(x_val), y_val)
             if error < best_mse:
                 best_mse = error
                 best_model = layers
 
-        kwargs['num_layers'] = best_model
+        kwargs2['num_layers'] = best_model
         print("Best number of layers:", best_model, "Fitting model with full data")
-        nns = NNS(**kwargs).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
+        nns = NNS(**kwargs2).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
 
-        t[len(base_est)] += time() - t0
-        cv_predictions[test, len(base_est)] = nns.predict(x[test]).flatten()
-        thetas[0, test, :] = nns.get_weights(x[test])[0]
+        t[len(base_est)+1] += time() - t0
+        cv_predictions[test, len(base_est)+1] = nns.predict(x[test]).flatten()
+        thetas[1, test, :] = nns.get_weights(x[test])[0]
 
         # CNNS
         print('CNNS...')
@@ -128,7 +129,7 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
-            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_val, axis=1))
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_strain, axis=1))
             try:
                 error = mean_squared_error(nns.predict(x_val), y_val)
             except:
@@ -139,13 +140,13 @@ def cvpredict(x, y, base_est, NN_layers, patience):
                 best_mse = error
                 best_model = layers
 
-        kwargs['num_layers'] = best_model
+        kwargs2['num_layers'] = best_model
         print("Best number of layers:", best_model, "Fitting model with full data")
-        nns = NNS(**kwargs).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
+        nns = NNS(**kwargs2).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
 
-        t[len(base_est)] += time() - t0
-        cv_predictions[test, len(base_est)] = nns.predict(x[test]).flatten()
-        thetas[0, test, :] = nns.get_weights(x[test])[0]
+        t[len(base_est)+2] += time() - t0
+        cv_predictions[test, len(base_est)+2] = nns.predict(x[test]).flatten()
+        thetas[2, test, :] = nns.get_weights(x[test])[0]
 
         # CNNS + phi
         print('CNNS + phi...')
@@ -155,7 +156,7 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         for layers in NN_layers:
             print('Current layers:', layers)
             kwargs['num_layers'] = layers
-            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_val, axis=1))
+            nns = NNS(**kwargs).fit(x_strain, y_strain.reshape(-1, 1), np.expand_dims(g_strain, axis=1))
             try:
                 error = mean_squared_error(nns.predict(x_val), y_val)
             except:
@@ -166,13 +167,13 @@ def cvpredict(x, y, base_est, NN_layers, patience):
                 best_mse = error
                 best_model = layers
 
-        kwargs['num_layers'] = best_model
+        kwargs2['num_layers'] = best_model
         print("Best number of layers:", best_model, "Fitting model with full data")
-        nns = NNS(**kwargs).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
+        nns = NNS(**kwargs2).fit(x[train], y[train].reshape(-1, 1), np.expand_dims(g, axis=1))
 
-        t[len(base_est)] += time() - t0
-        cv_predictions[test, len(base_est)] = nns.predict(x[test]).flatten()
-        thetas[0, test, :] = nns.get_weights(x[test])[0]
+        t[len(base_est)+3] += time() - t0
+        cv_predictions[test, len(base_est)+3] = nns.predict(x[test]).flatten()
+        thetas[3, test, :] = nns.get_weights(x[test])[0]
 
         # Direct NN
         print('Direct NN...')
@@ -302,8 +303,8 @@ if __name__ == '__main__':
 
     # Superconductivity
     data = pd.read_csv('/home/vcoscrato/Datasets/superconductivity.csv')
-    x = data.iloc[:2000, range(0, data.shape[1] - 1)].values
-    y = data.iloc[:2000, -1].values
+    x = data.iloc[:, range(0, data.shape[1] - 1)].values
+    y = data.iloc[:, -1].values
 
     run(x, y, frname = 'superconductivity')
 
