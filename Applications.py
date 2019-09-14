@@ -101,6 +101,7 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         # UNNS + phi
         print('UNNS + phi...')
         kwargs['ensemble_addition'] = True
+        kwargs2['ensemble_addition'] = True
         best_mse = np.infty
         t0 = time()
         for layers in NN_layers:
@@ -124,6 +125,8 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         print('CNNS...')
         kwargs['ensemble_addition'] = False
         kwargs['ensemble_method'] = 'CNNS'
+        kwargs2['ensemble_addition'] = False
+        kwargs2['ensemble_method'] = 'CNNS'
         best_mse = np.infty
         t0 = time()
         for layers in NN_layers:
@@ -151,6 +154,7 @@ def cvpredict(x, y, base_est, NN_layers, patience):
         # CNNS + phi
         print('CNNS + phi...')
         kwargs['ensemble_addition'] = True
+        kwargs2['ensemble_addition'] = True
         best_mse = np.infty
         t0 = time()
         for layers in NN_layers:
